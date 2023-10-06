@@ -62,3 +62,6 @@ rsconnect/
 *README.html
 *README_cache/
 #*README_files/
+
+#pnj graphs
+*.png
