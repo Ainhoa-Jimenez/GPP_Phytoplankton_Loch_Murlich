@@ -18,6 +18,7 @@ library("tidyverse")
 library("MuMIn")
 library("stringr")
 library("dunn.test")
+library("openxlsx")
 ```
 
 2.  Load data
@@ -230,7 +231,7 @@ plankton_total_clean%>%
 
 # Stats to find a difference between sites that creates a difference in phytoplankton
 
-1. Load a new data set
+1.  Load a new data set
 
 ```{r, warning=FALSE}
 temp <- read_xlsx("data_lake_v7.xlsx", sheet = "Metadata") |>
@@ -258,7 +259,8 @@ full$date<-as.factor(full$date)
 
 ## Temperature between sites
 
-1. Linear model
+1.  Linear model
+
 ```{r}
 
 temp_plankton_lm<- lm(log(temperature)~site, data=full)
@@ -275,18 +277,19 @@ bartlett.test(log(temperature)~site, data=full)
 ##data isn't normal
 ```
 
-2. Use non-parametrical alternative
+2.  Use non-parametrical alternative
 
 ```{r}
 kruskal.test(temperature~site, data=full)
 ```
 
-Temperature differs significantly by site. How?
-Dunn Test:
+Temperature differs significantly by site. How? Dunn Test:
+
 ```{r}
 posthoc <- dunn.test(full$temperature, g = full$site, method = "bonferroni")
 posthoc
 ```
+
 Site 4 differs significantly with sites 3 and 1
 
 ```{r}
@@ -299,7 +302,8 @@ plot(temp_day_plankton_lm)
 #no non-parametric alternative
 ```
 
-3. Graph
+3.  Graph
+
 ```{r}
 #graph of temp by site
 
@@ -340,7 +344,8 @@ full%>%
 
 ## Background Temperature
 
-1. Load a different data set and make ajustments
+1.  Load a different data set and make ajustments
+
 ```{r}
 NPB<- read_xlsx("LAKE4.xlsx", sheet="N and P Concentrations")
 
@@ -355,7 +360,8 @@ metadata$temperature<- as.numeric(metadata$temperature)
 metadata<- metadata[-c(33,46,65,74,77,78),] #remove temperature NAs
 ```
 
-2. Create summary tables
+2.  Create summary tables
+
 ```{R}
 summary_temp<- group_by(metadata, site) %>%
  summarise(
@@ -367,9 +373,13 @@ summary_temp$se<- (summary_temp$sd)/sqrt(summary_temp$count)
 
 ## Background Values
 
-1. Load new data set
+1.  Load new data set
 
 ```{r}
+
+#need information from 2 differnet data sets
+
+#load first one
 temp <- read_xlsx("data_lake_v7.xlsx", sheet = "Metadata") |>
   select(site, sample, date, temperature) |>
   filter(date %in% "mon") |>
@@ -378,13 +388,20 @@ temp <- read_xlsx("data_lake_v7.xlsx", sheet = "Metadata") |>
   summarise(mean_temp = mean(temperature)) |>
   rename(Site = site)
 
-meta <- read_xlsx("data_lake_v7.xlsx", sheet = "N and P Concentrations") |>
+#load second one and combine
+meta <- read_xlsx("LAKE4.xlsx", sheet = "N and P Concentrations") |>
   full_join(temp, by = "Site") |>
-  pivot_longer(!Site, names_to = "measurment", values_to = "value") |>
-  filter(!measurment %in% c("N_mg_L", "P_mg_L"))
+  pivot_longer(!Site, names_to = "measurment", values_to = "value") 
+ 
+
 ```
 
+
+2. Generate graph
+
 ```{r}
+
+#graph 1
 (meta_hist <- ggplot(meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
   geom_bar(position = "dodge", stat="identity") +
   labs(fill = "Measuremnt") +
@@ -403,6 +420,7 @@ meta <- read_xlsx("data_lake_v7.xlsx", sheet = "N and P Concentrations") |>
 )
 
 
+#graph 2
 (temp_hist <- ggplot(meta |> filter(measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
   geom_bar(position = "dodge", stat="identity") +
   theme_classic()+
@@ -420,6 +438,9 @@ meta <- read_xlsx("data_lake_v7.xlsx", sheet = "N and P Concentrations") |>
     legend.title = element_text(size = 14)) 
 )
 
+# Combine both graphs
+(combined_plot <- meta_hist + temp_hist) 
+
 (test <- ggplot(meta, aes(x = Site, y = measurment)) +
     geom_bar(data = subset(meta, measurment == c("nitrate_mg_L", "phosphate_mg_L", "DOC_mg_L")), aes(x = as.factor(Site), y = value, fill = measurment),
              position = "dodge", stat = "identity") +
@@ -428,15 +449,3 @@ meta <- read_xlsx("data_lake_v7.xlsx", sheet = "N and P Concentrations") |>
 
 line <- geom_line(data = meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, group = measurment), color = "red")
 ```
-
-
-
-
-
-
-
-
-
-
-
-
