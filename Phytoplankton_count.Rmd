@@ -19,6 +19,7 @@ library("MuMIn")
 library("stringr")
 library("dunn.test")
 library("openxlsx")
+library("gridExtra")
 ```
 
 2.  Load data
@@ -130,7 +131,12 @@ summary_plankton <- summary_plankton%>%
 # to wrap labels
 labels_p1<-str_wrap(c("Phosphate + Nitrate + Light", "Phosphate + Nitrate + Dark", "Phosphate + Light", "Phosphate + Dark","Nitrate + Light", "Nitrate + Dark", "Light", "Dark"), width=15)
 
-p1<- ggplot(summary_plankton, aes(x=treatment, y=mean, fill=id)) + 
+
+# Set the PNG device for plotting
+png("Plankton_treatment_barchart.png", width=480, height=480)
+
+# Create the ggplot
+p1<- ggplot(summary_plankton, aes(x=treatment, y=mean, fill=as.factor(id))) + 
   geom_bar(stat="identity", color="black", alpha=0.7,
            position=position_dodge()) + 
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2,
@@ -138,6 +144,7 @@ p1<- ggplot(summary_plankton, aes(x=treatment, y=mean, fill=id)) +
    geom_point(data=plankton_no_monday_clean, aes(x = treatment, y=mean_per_ul), shape = 21, position = position_dodge(width = 1))+
    scale_fill_manual(labels = c("Light","Dark"), values = c("#00008B", "#008080"))
 
+# Customize the ggplot
 p1<-p1+ theme_classic()+
   xlab("Treatment")+
   ylab("Mean plankton abundance per microliter")+
@@ -149,7 +156,10 @@ p1<-p1+ theme_classic()+
         axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
   labs(fill="Light Treatment")
 
-p1
+print(p1)
+
+#Close the PNG service
+dev.off()
 ```
 
 Boxplot:
@@ -161,7 +171,9 @@ plankton_no_monday_clean <- plankton_no_monday_clean%>%
   mutate(id = ifelse(grepl("..L$", treatment), "light", "dark"))%>%
   mutate(treatment = as.factor(treatment))
 
-  
+ # Set the PNG device for plotting
+png("Plankton_treatment_boxplot.png", width=480, height=480)
+ 
   plankton_no_monday_clean%>%
   ggplot(aes(as.factor(treatment), mean_per_ul, fill = as.factor(id))) +
   geom_boxplot(color="black", alpha=0.7)+
@@ -178,7 +190,7 @@ plankton_no_monday_clean <- plankton_no_monday_clean%>%
         axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
   labs(fill="Light Treatment")
 
-
+dev.off()
 
 ```
 
@@ -212,10 +224,11 @@ Site has a significant effect on phytoplankton abundance.
 ```{r}
 plankton_total_clean$site<-as.factor(plankton_total_clean$site)
 
+png("Plankton_Site.png", width=480, height=480)
 
 plankton_total_clean%>%
-  ggplot(aes(site, mean_per_ul))+
-  geom_boxplot(color="black", fill="#00008B", alpha=0.7)+
+  ggplot(aes(site, mean_per_ul, fill=site))+
+  geom_boxplot(color="black", alpha=0.7)+
   geom_text(aes(x = 1, y = 7, label ="*"),
             vjust = 0.5, hjust = 0.5, color = "yellow", size = 10, fontface = "bold")+
   theme_classic()+
@@ -227,9 +240,11 @@ plankton_total_clean%>%
         axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
         axis.title.x = element_text(size = 16, margin = margin(t = 10)),
         axis.title.y = element_text(size = 16, margin = margin(r = 10)))
+
+dev.off()
 ```
 
-# Stats to find a difference between sites that creates a difference in phytoplankton
+# Bcckground Statistical Analysis
 
 1.  Load a new data set
 
@@ -307,6 +322,8 @@ plot(temp_day_plankton_lm)
 ```{r}
 #graph of temp by site
 
+png("temp_site.png", width=480, height=480)
+
  full%>% 
    ggplot(aes(site, temperature))+
   geom_boxplot(position = position_dodge(width = 5), color="black", fill="#00008B", alpha=0.7)+
@@ -320,9 +337,11 @@ plot(temp_day_plankton_lm)
         axis.text.y = element_text(size = 12),  # Adjust the size of y-axis labels
         axis.title.x = element_text(size = 14, margin = margin(t = 10)),
         axis.title.y = element_text(size = 14, margin = margin(r = 10)))
-
+dev.off()
 
 #divided by day
+
+png("temp_site_day.png", width=480, height=480)
 
 full%>% 
    ggplot(aes(site, temperature))+
@@ -338,11 +357,9 @@ full%>%
         axis.title.x = element_text(size = 14, margin = margin(t = 10)),
         axis.title.y = element_text(size = 14, margin = margin(r = 10)))+
   facet_wrap(~as.factor(date))
+
+dev.off()
 ```
-
-# Background Statistical Analysis
-
-## Background Temperature
 
 1.  Load a different data set and make ajustments
 
@@ -371,7 +388,7 @@ summary_temp<- group_by(metadata, site) %>%
 summary_temp$se<- (summary_temp$sd)/sqrt(summary_temp$count)
 ```
 
-## Background Values
+## Background  N, P, pH, DOC Values
 
 1.  Load new data set
 
@@ -401,7 +418,8 @@ meta <- read_xlsx("LAKE4.xlsx", sheet = "N and P Concentrations") |>
 
 ```{r}
 
-#graph 1
+png("background_condition.png", width = 480, height=480)
+
 (meta_hist <- ggplot(meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
   geom_bar(position = "dodge", stat="identity") +
   labs(fill = "Measuremnt") +
@@ -415,37 +433,246 @@ meta <- read_xlsx("LAKE4.xlsx", sheet = "N and P Concentrations") |>
           axis.title.x = element_text(size = 16, margin = margin(t = 10)),
           axis.title.y = element_text(size = 16, margin = margin(r = 10)), 
           legend.text = element_text(size = 12), 
-          legend.title = element_text(size = 14)) +
-    scale_y_continuous(sec.axis = sec_axis(trans = ~ ., name = "°C"))
+          legend.title = element_text(size = 14))
 )
+   
+dev.off()
 
 
-#graph 2
-(temp_hist <- ggplot(meta |> filter(measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
-  geom_bar(position = "dodge", stat="identity") +
-  theme_classic()+
-  ylab("Celciues")+
-  xlab("Site")+
-  labs(fill = "Measuremnt") +
-  scale_fill_manual(labels = "Temperature", values =  "#FFA500") +
-  scale_y_continuous(position = "right") +
-  theme(
-    axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
-    axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
-    axis.title.x = element_text(size = 16, margin = margin(t = 10)),
-    axis.title.y = element_text(size = 16, margin = margin(r = 10)), 
-    legend.text = element_text(size = 12), 
-    legend.title = element_text(size = 14)) 
-)
 
-# Combine both graphs
-(combined_plot <- meta_hist + temp_hist) 
-
-(test <- ggplot(meta, aes(x = Site, y = measurment)) +
-    geom_bar(data = subset(meta, measurment == c("nitrate_mg_L", "phosphate_mg_L", "DOC_mg_L")), aes(x = as.factor(Site), y = value, fill = measurment),
-             position = "dodge", stat = "identity") +
-    #scale_fill_manual(labels = c("DOC", "Nitrate", "Phosphate"), values = c("#87CEEB", "#336699", "#000080")) +
-    geom_line(data = subset(meta, measurment == "mean_temp"), aes(group = 1), color = "red"))
-
-line <- geom_line(data = meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, group = measurment), color = "red")
 ```
+
+
+# GPP Calculations
+
+1. Load data
+
+```{r}
+data_GPP<-read.csv("data_nnp.csv")
+
+#clean data
+data_GPP<-data_GPP%>%
+  select(-Temp)%>%
+  na.omit()
+```
+
+## GPP-Treatment
+
+Use only Monday-Thursday data
+
+2. Create linear model
+
+```{r}
+anov.gpp.t_m<-lm(GPP.thu_mon.~treatment, data=data_GPP)
+anova(anov.gpp.t_m)
+summary(anov.gpp.t_m)
+plot(anov.gpp.t_m)
+
+
+```
+
+Data is not normal, but cannot tranform the data because there are negative values. Try non-parametric
+
+```{r}
+np.gpp.t_m<-kruskal.test(GPP.thu_mon.~treatment, data=data_GPP)
+
+np.gpp.t_m # says if significant
+
+
+```
+No significant effect of the treatment en GPP
+
+3. Create a graph
+
+```{r}
+
+png("GPP_treatment.png", width = 480, height=480)
+
+data_GPP%>%
+  ggplot(aes(treatment, GPP.thu_mon.))+
+  geom_boxplot(color="black", fill="#00008B", alpha=0.8)+
+  theme_classic()+
+  xlab("Treatment")+
+  ylab("GPP Monday-Thursday (change in %)")+ 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 12)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 12)))+
+          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + Nitrate", "Phosphate", "Nitrate", "Control"))
+
+dev.off()
+```
+
+
+## NPP and R to treatment
+
+```{r}
+
+#NPP
+
+anov.npp.t_m<-lm(NPP.thu_mon.~treatment, data=data_GPP)
+anova(anov.npp.t_m)
+summary(anov.npp.t_m)
+plot(anov.npp.t_m)
+   #doesn't meet assumptions--> non-parametric
+
+np.npp.t_m<-kruskal.test(NPP.thu_mon.~treatment, data=data_GPP)
+np.npp.t_m
+
+
+
+#Respiration
+
+anov.r.t_m<-lm(R.thu_mon.~treatment, data=data_GPP)
+anova(anov.r.t_m)
+summary(anov.r.t_m)
+plot(anov.r.t_m)
+   #doesn't meet assumptions--> non-parametric
+
+np.r.t_m<-kruskal.test(R.thu_mon.~treatment, data=data_GPP)
+np.r.t_m
+```
+
+No significant results of any of the 2.
+
+2. Graph
+
+```{r}
+
+#NPP
+
+
+npp.P <- data_GPP%>%
+  ggplot(aes(treatment, NPP.thu_mon.))+
+  geom_boxplot(color="black", fill="blue", alpha=0.8)+
+  theme_classic()+
+  xlab("Treatment")+
+  ylab("NPP Monday-Thursday (change in %)")+ 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 12)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 12)))+
+          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + Nitrate", "Phosphate", "Nitrate", "Control"))
+
+
+#R
+
+r.P <- data_GPP%>%
+  ggplot(aes(treatment, R.thu_mon.))+
+  geom_boxplot(color="black", fill="grey", alpha=0.8)+
+  theme_classic()+
+  xlab("Treatment")+
+  ylab("R Monday-Thursday (change in %)")+ 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 12)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 12)))+
+          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + Nitrate", "Phosphate", "Nitrate", "Control"))
+
+
+# Arrange the two plots side by side
+combined_plot <- grid.arrange(npp.P, r.P, ncol = 2)
+```
+
+# Effect of site in GPP
+
+1. Linear model
+
+```{r}
+mod1<-lm(GPP.thu_mon.~site, data=data_GPP)
+
+anova(mod1)
+summary(mod1)
+
+plot(mod1)
+#doesn't meet assumptions
+```
+
+2. Non-parametric alternative
+
+```{r}
+mod1_np<-kruskal.test(GPP.thu_mon.~site, data=data_GPP)
+mod1_np
+
+#significant
+```
+Site has a significant effect on GPP. See which one is creating the difference:
+
+```{r}
+dunn.test(data_GPP$GPP.thu_mon., g = data_GPP$site)
+```
+
+Site 4 significantly different than the rest of them.
+
+3. Create a graph
+
+```{r}
+data_GPP$site<-as.factor(data_GPP$site)
+
+plot<-data_GPP%>%
+  ggplot(aes(site, GPP.thu_mon., fill=site))+
+  geom_boxplot(color="black", alpha=0.8)+
+  theme_classic()+
+  theme(panel.background = element_blank())+
+  xlab("Site")+
+  ylab("GPP Monday-Thursday (change in %)")+ 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
+  # Add stars to the boxplot
+  geom_text( aes(x = 4, y = -13, label ="*"),
+            vjust = 0.5, hjust = 0.5, color = "yellow", size = 10, fontface = "bold")
+print(plot)
+```
+
+## Temperature effect on GPP
+
+1. Load a new data set
+
+```{r}
+
+temp_d<-read.csv("temp_use.csv")  %>%
+  mutate(site = as.factor(site))# download temp and put site as factor
+
+full2 <- temp_d %>%
+  full_join(data_GPP, join_by(treatment, site))#join both datasets
+
+#clean data
+full2<-full2%>%
+  na.omit()
+
+```
+
+2. Create linear model
+
+```{r}
+mod_t<-lm(GPP.thu_mon.~av.temp, data=full2)
+anova(mod_t)
+summary(mod_t)
+plot(mod_t)
+
+# doesn't meet the assumption
+mod_t2<-lm(sqrt(av.temp)~GPP.thu_mon., data=full2)
+anova(mod_t2)
+summary(mod_t2)
+plot(mod_t2)
+
+#still doesn't meet
+```
+
+
+3. Non-parametric test
+
+```{r}
+
+np_test_temp<-kruskal.test(GPP.thu_mon.~av.temp,data=full2)
+np_test_temp
+
+```
+
+Temperature not significant effect on GPP
