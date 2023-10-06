@@ -17,6 +17,7 @@ library("lme4")
 library("tidyverse")
 library("MuMIn")
 library("stringr")
+library("dunn.test")
 ```
 
 2.  Load data
@@ -251,14 +252,18 @@ plankton<- plankton%>%  na.omit()
 
 full<- full%>%  na.omit()
 full$temperature<- as.numeric(full$temperature)
+full$site<-as.factor(full$site)
+full$date<-as.factor(full$date)
 ```
 
 ## Temperature between sites
 
+1. Linear model
 ```{r}
 
 temp_plankton_lm<- lm(log(temperature)~site, data=full)
 summary(temp_plankton_lm)
+anova(temp_plankton_lm)
 plot(temp_plankton_lm)
 
 #normality
@@ -270,29 +275,168 @@ bartlett.test(log(temperature)~site, data=full)
 ##data isn't normal
 ```
 
-Use non-parametrical alternative
+2. Use non-parametrical alternative
 
 ```{r}
 kruskal.test(temperature~site, data=full)
 ```
 
-Temperature differs significantly by site 
+Temperature differs significantly by site. How?
+Dunn Test:
+```{r}
+posthoc <- dunn.test(full$temperature, g = full$site, method = "bonferroni")
+posthoc
+```
+Site 4 differs significantly with sites 3 and 1
 
+```{r}
+#include day as a factor
+temp_day_plankton_lm<- lm(log(temperature)~site+date, data=full)
+anova(temp_day_plankton_lm)
+plot(temp_day_plankton_lm)
+
+#doesn't meet normality
+#no non-parametric alternative
+```
+
+3. Graph
 ```{r}
 #graph of temp by site
 
  full%>% 
    ggplot(aes(site, temperature))+
-  geom_boxplot(position = position_dodge(width = 5), color="black", fill="#008080", alpha=0.4)+
+  geom_boxplot(position = position_dodge(width = 5), color="black", fill="#00008B", alpha=0.7)+
   theme_classic()+
   theme_classic()+
   xlab("Site")+
-  ylab("Mean number of plankton per microliter")+
-  scale_x_discrete(labels= c("Phosphate \n Nitrate \n Light", "Phosphate \n Nitrate \n Dark", "Phosphate \n Light", "Phosphate \n Dark","Nitrate \n Light", "Nitrate \n Dark", "Light", "Dark"))+
+  ylab("Mean Temperature (ºC)")+
+  scale_x_discrete(labels= c("\nS1", "\nS2", "\nS3", "\nS4"))+
   theme(legend.position = "none",
         axis.text.x = element_text(size = 12, margin = margin(b=20)),  # Adjust the size of x-axis labels
         axis.text.y = element_text(size = 12),  # Adjust the size of y-axis labels
         axis.title.x = element_text(size = 14, margin = margin(t = 10)),
         axis.title.y = element_text(size = 14, margin = margin(r = 10)))
+
+
+#divided by day
+
+full%>% 
+   ggplot(aes(site, temperature))+
+  geom_boxplot(position = position_dodge(width = 5), color="black", fill="#00008B", alpha=0.7)+
+  theme_classic()+
+  theme_classic()+
+  xlab("Site")+
+  ylab("Mean Temperature (ºC)")+
+  scale_x_discrete(labels= c("\nS1", "\nS2", "\nS3", "\nS4"))+
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 12, margin = margin(b=20)),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 12),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 14, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 14, margin = margin(r = 10)))+
+  facet_wrap(~as.factor(date))
 ```
+
+# Background Statistical Analysis
+
+## Background Temperature
+
+1. Load a different data set and make ajustments
+```{r}
+NPB<- read_xlsx("LAKE4.xlsx", sheet="N and P Concentrations")
+
+
+metadata<- read_xlsx("LAKE4.xlsx", sheet="Metadata")
+
+str(metadata)         #check structure
+
+#make necessary changes
+metadata$site<- as.factor(metadata$site)
+metadata$temperature<- as.numeric(metadata$temperature)
+metadata<- metadata[-c(33,46,65,74,77,78),] #remove temperature NAs
+```
+
+2. Create summary tables
+```{R}
+summary_temp<- group_by(metadata, site) %>%
+ summarise(
+   count = n(),
+   mean = mean(temperature, na.rm = TRUE),
+   sd = sd(temperature, na.rm= TRUE))
+summary_temp$se<- (summary_temp$sd)/sqrt(summary_temp$count)
+```
+
+## Background Values
+
+1. Load new data set
+
+```{r}
+temp <- read_xlsx("data_lake_v7.xlsx", sheet = "Metadata") |>
+  select(site, sample, date, temperature) |>
+  filter(date %in% "mon") |>
+  mutate(temperature = as.numeric(temperature)) |>
+  group_by(site) |>
+  summarise(mean_temp = mean(temperature)) |>
+  rename(Site = site)
+
+meta <- read_xlsx("data_lake_v7.xlsx", sheet = "N and P Concentrations") |>
+  full_join(temp, by = "Site") |>
+  pivot_longer(!Site, names_to = "measurment", values_to = "value") |>
+  filter(!measurment %in% c("N_mg_L", "P_mg_L"))
+```
+
+```{r}
+(meta_hist <- ggplot(meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
+  geom_bar(position = "dodge", stat="identity") +
+  labs(fill = "Measuremnt") +
+    # geom_boxplot(color="black", fill="#008080", alpha=0.4)+
+    theme_classic()+
+    ylab("mg/L")+
+    xlab("Site")+
+    theme(
+          axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+          axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+          axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+          axis.title.y = element_text(size = 16, margin = margin(r = 10)), 
+          legend.text = element_text(size = 12), 
+          legend.title = element_text(size = 14)) +
+    scale_y_continuous(sec.axis = sec_axis(trans = ~ ., name = "°C"))
+)
+
+
+(temp_hist <- ggplot(meta |> filter(measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
+  geom_bar(position = "dodge", stat="identity") +
+  theme_classic()+
+  ylab("Celciues")+
+  xlab("Site")+
+  labs(fill = "Measuremnt") +
+  scale_fill_manual(labels = "Temperature", values =  "#FFA500") +
+  scale_y_continuous(position = "right") +
+  theme(
+    axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+    axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+    axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+    axis.title.y = element_text(size = 16, margin = margin(r = 10)), 
+    legend.text = element_text(size = 12), 
+    legend.title = element_text(size = 14)) 
+)
+
+(test <- ggplot(meta, aes(x = Site, y = measurment)) +
+    geom_bar(data = subset(meta, measurment == c("nitrate_mg_L", "phosphate_mg_L", "DOC_mg_L")), aes(x = as.factor(Site), y = value, fill = measurment),
+             position = "dodge", stat = "identity") +
+    #scale_fill_manual(labels = c("DOC", "Nitrate", "Phosphate"), values = c("#87CEEB", "#336699", "#000080")) +
+    geom_line(data = subset(meta, measurment == "mean_temp"), aes(group = 1), color = "red"))
+
+line <- geom_line(data = meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, group = measurment), color = "red")
+```
+
+
+
+
+
+
+
+
+
+
+
 
