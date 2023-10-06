@@ -1,2 +1,6 @@
 # GPP_Phytoplankton_Loch_Murlich
-4th_year_Fieldtrip_UoE
+This study took was part of  a 4th year undergraduate Fieldtrip of UoE.
+Ecology and Environmental Sciences
+
+
+
