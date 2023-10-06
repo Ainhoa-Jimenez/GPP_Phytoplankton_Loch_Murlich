@@ -1,0 +1,298 @@
+---
+title: "PHytoplankton count"
+author: "Ainhoa"
+date: "2023-10-06"
+output: html_document
+---
+
+Code related to statistical analysis of the Phytoplankton Abundance
+
+1.  Install and load packages
+
+```{r, message=FALSE}
+library("readxl")
+library("dplyr")
+library("ggplot2")
+library("lme4")
+library("tidyverse")
+library("MuMIn")
+library("stringr")
+```
+
+2.  Load data
+
+```{r, warning=FALSE}
+plankton_total <- read_xlsx("data_lake_v7.xlsx", sheet = "Pretty_Plankton") |>
+ #make first adjustment needed. Put the mean number of 
+   mutate(mean_per_ul = as.numeric(mean_per_ul))%>%
+  mutate(treatment= as.factor(treatment))
+```
+
+# Phytoplankton abundance vs Treatment
+
+## Data excluding monday
+
+```{r}
+#select measuremnets taken on day 1 (Monday)
+plankton_no_monday <- plankton_total |>
+  filter(!date == "Mon")
+```
+
+Check the structure of the data distribution:
+
+```{r}
+hist(plankton_no_monday$mean_per_ul, 
+     xlab = "Mean phytoplankton abundance per uL",
+     ylab = "Frequency",
+     bins = 1)
+```
+
+The data is too skewed to the left to be a normal distribution (needed to use linear models).
+
+Try logging the data
+
+```{r}
+(ggplot(plankton_no_monday, aes(x=log(mean_per_ul))) +
+  geom_histogram(binwidth = 0.5)+
+   labs(x = "Log of Mean Phytoplankton Abundance per uL",
+    y = "Frequency"))
+```
+
+Looks much better.
+
+3.  Conduct a linear model on Monday data
+
+```{r}
+#first need to remove NA
+plankton_no_monday_clean<-plankton_no_monday%>%
+  na.omit(plankton_no_monday$mean_per_ul)
+##------
+
+p_m1 <- lm(log(mean_per_ul) ~ treatment, data = plankton_no_monday_clean)
+summary(p_m1)
+anova(p_m1)
+plot(p_m1)
+
+#normality
+p_m1_resids <- resid(p_m1)
+shapiro.test(p_m1_resids)
+#homoscedasticity
+bartlett.test(log(mean_per_ul) ~ treatment, data = plankton_no_monday_clean)
+
+### Model meets the necessary assumptions meets assumptions
+```
+
+This model tells us there is no differencece between treatments
+
+4.  Try with mixed linear model, adding site as a random variable
+
+```{r}
+p_m3 <- lmer( mean_per_ul ~ treatment + (1|site), data = plankton_no_monday_clean, REML = FALSE)
+summary(p_m3)
+
+p_m4 <- lmer( mean_per_ul ~ 1 + (1|site), data = plankton_no_monday_clean, REML = FALSE)
+summary(p_m3)
+
+AIC(p_m1, p_m3, p_m4)
+```
+
+p_m4 explains more than p_m3 (lower AICc). Adding treatment does not improve the model. Site might have an effect
+
+5.  Create the graphs
+
+```{r}
+
+#create a summary for the data set
+
+summary_plankton<- group_by(plankton_no_monday_clean, treatment) %>%
+ summarise(
+    count = n(),
+    mean = mean(mean_per_ul, na.rm = TRUE),
+    sd = sd(mean_per_ul, na.rm = TRUE))
+
+
+#add standard error
+summary_plankton$se<- (summary_plankton$sd)/sqrt(summary_plankton$count)
+
+#---
+
+#create a "light column in data set
+
+summary_plankton <- summary_plankton%>%
+  mutate(treatment = as.character(treatment)) %>%
+  mutate(id = ifelse(grepl("..L$", treatment), "light", "dark"))%>%
+  mutate(treatment = as.factor(treatment))%>%
+  mutate(id=as.factor(id))
+
+
+# to wrap labels
+labels_p1<-str_wrap(c("Phosphate + Nitrate + Light", "Phosphate + Nitrate + Dark", "Phosphate + Light", "Phosphate + Dark","Nitrate + Light", "Nitrate + Dark", "Light", "Dark"), width=15)
+
+p1<- ggplot(summary_plankton, aes(x=treatment, y=mean, fill=id)) + 
+  geom_bar(stat="identity", color="black", alpha=0.7,
+           position=position_dodge()) + 
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2,
+                 position=position_dodge(.9))+
+   geom_point(data=plankton_no_monday_clean, aes(x = treatment, y=mean_per_ul), shape = 21, position = position_dodge(width = 1))+
+   scale_fill_manual(labels = c("Light","Dark"), values = c("#00008B", "#008080"))
+
+p1<-p1+ theme_classic()+
+  xlab("Treatment")+
+  ylab("Mean plankton abundance per microliter")+
+  scale_x_discrete(labels= c("Phosphate \n + \n Nitrate", "Phosphate \n + \n Nitrate", "Phosphate", "Phosphate","Nitrate", "Nitrate", "No Spike", "No Spike")) +
+  theme(
+        axis.text.x = element_text(size = 14, angle=50, hjust=1),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
+  labs(fill="Light Treatment")
+
+p1
+```
+
+Boxplot:
+
+```{r}
+#Creating a dataset where plankton is either in a light or a dark treatment. To be used later on in stats...
+plankton_no_monday_clean <- plankton_no_monday_clean%>%
+  mutate(treatment = as.character(treatment)) %>%
+  mutate(id = ifelse(grepl("..L$", treatment), "light", "dark"))%>%
+  mutate(treatment = as.factor(treatment))
+
+  
+  plankton_no_monday_clean%>%
+  ggplot(aes(as.factor(treatment), mean_per_ul, fill = as.factor(id))) +
+  geom_boxplot(color="black", alpha=0.7)+
+    scale_fill_manual(labels = c("Light","Dark"), values = c("#00008B", "#008080")) +
+  theme_classic()+
+  theme_classic()+
+  xlab("Treatment")+
+  ylab("Mean plankton abundance per microliter")+
+  scale_x_discrete(labels= c("Phosphate \n + \n Nitrate", "Phosphate \n + \n Nitrate", "Phosphate", "Phosphate","Nitrate", "Nitrate", "No Spike", "No Spike")) +
+  theme(
+        axis.text.x = element_text(size = 12),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
+  labs(fill="Light Treatment")
+
+
+
+```
+
+# Phytoplankton abundance vs Site
+
+1.  Create linear model
+
+```{r}
+#first need to remove NA
+plankton_total_clean<-plankton_total%>%
+  na.omit(plankton_no_monday$mean_per_ul)
+
+p_m2 <- lm(log(mean_per_ul) ~ site, data = plankton_total_clean)
+summary(p_m2)
+anova(p_m2)
+plot(p_m2)
+
+#normality
+p_m2_resids <- resid(p_m2)
+shapiro.test(p_m2_resids)
+#homoscedasticity
+bartlett.test(log(mean_per_ul) ~ site, data = plankton_no_monday_clean)
+
+### Data meets assumptions
+```
+
+Site has a significant effect on phytoplankton abundance.
+
+2.  Create the graphs
+
+```{r}
+plankton_total_clean$site<-as.factor(plankton_total_clean$site)
+
+
+plankton_total_clean%>%
+  ggplot(aes(site, mean_per_ul))+
+  geom_boxplot(color="black", fill="#00008B", alpha=0.7)+
+  geom_text(aes(x = 1, y = 7, label ="*"),
+            vjust = 0.5, hjust = 0.5, color = "yellow", size = 10, fontface = "bold")+
+  theme_classic()+
+  theme_classic()+
+  xlab("Site")+
+  ylab("Mean plankton abundance per microliter")+
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 10)))
+```
+
+# Stats to find a difference between sites that creates a difference in phytoplankton
+
+1. Load a new data set
+
+```{r, warning=FALSE}
+temp <- read_xlsx("data_lake_v7.xlsx", sheet = "Metadata") |>
+  rename(treatment = sample) |>
+  mutate(date = str_to_sentence(date)) |>
+  mutate(treatment = str_to_upper(treatment))
+
+plankton <- read_xlsx("data_lake_v7.xlsx", sheet = "Pretty_Plankton") |>
+  mutate(mean_per_ul = as.numeric(mean_per_ul))
+
+full <- temp |>
+  mutate(treatment = str_to_upper(treatment)) |>
+  select(date, site, treatment, temperature) |>
+  full_join(plankton, join_by(site, treatment, date))
+
+#clean and format data
+
+plankton<- plankton%>%  na.omit()
+
+full<- full%>%  na.omit()
+full$temperature<- as.numeric(full$temperature)
+```
+
+## Temperature between sites
+
+```{r}
+
+temp_plankton_lm<- lm(log(temperature)~site, data=full)
+summary(temp_plankton_lm)
+plot(temp_plankton_lm)
+
+#normality
+temp_plankton_lm_resids <- resid(temp_plankton_lm)
+shapiro.test(temp_plankton_lm_resids)
+#homoscedasticity
+bartlett.test(log(temperature)~site, data=full)
+
+##data isn't normal
+```
+
+Use non-parametrical alternative
+
+```{r}
+kruskal.test(temperature~site, data=full)
+```
+
+Temperature differs significantly by site 
+
+```{r}
+#graph of temp by site
+
+ full%>% 
+   ggplot(aes(site, temperature))+
+  geom_boxplot(position = position_dodge(width = 5), color="black", fill="#008080", alpha=0.4)+
+  theme_classic()+
+  theme_classic()+
+  xlab("Site")+
+  ylab("Mean number of plankton per microliter")+
+  scale_x_discrete(labels= c("Phosphate \n Nitrate \n Light", "Phosphate \n Nitrate \n Dark", "Phosphate \n Light", "Phosphate \n Dark","Nitrate \n Light", "Nitrate \n Dark", "Light", "Dark"))+
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 12, margin = margin(b=20)),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 12),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 14, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 14, margin = margin(r = 10)))
+```
+
