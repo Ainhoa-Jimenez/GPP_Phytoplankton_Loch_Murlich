@@ -244,7 +244,7 @@ plankton_total_clean%>%
 dev.off()
 ```
 
-# Bcckground Statistical Analysis
+# Background Statistical Analysis
 
 1.  Load a new data set
 
@@ -388,7 +388,7 @@ summary_temp<- group_by(metadata, site) %>%
 summary_temp$se<- (summary_temp$sd)/sqrt(summary_temp$count)
 ```
 
-## Background  N, P, pH, DOC Values
+## Background N, P, pH, DOC Values
 
 1.  Load new data set
 
@@ -413,8 +413,7 @@ meta <- read_xlsx("LAKE4.xlsx", sheet = "N and P Concentrations") |>
 
 ```
 
-
-2. Generate graph
+2.  Generate graph
 
 ```{r}
 
@@ -442,10 +441,9 @@ dev.off()
 
 ```
 
-
 # GPP Calculations
 
-1. Load data
+1.  Load data
 
 ```{r}
 data_GPP<-read.csv("data_nnp.csv")
@@ -460,7 +458,7 @@ data_GPP<-data_GPP%>%
 
 Use only Monday-Thursday data
 
-2. Create linear model
+2.  Create linear model
 
 ```{r}
 anov.gpp.t_m<-lm(GPP.thu_mon.~treatment, data=data_GPP)
@@ -468,7 +466,7 @@ anova(anov.gpp.t_m)
 summary(anov.gpp.t_m)
 plot(anov.gpp.t_m)
 
-
+#doesn't meet assumptions
 ```
 
 Data is not normal, but cannot tranform the data because there are negative values. Try non-parametric
@@ -476,34 +474,35 @@ Data is not normal, but cannot tranform the data because there are negative valu
 ```{r}
 np.gpp.t_m<-kruskal.test(GPP.thu_mon.~treatment, data=data_GPP)
 
-np.gpp.t_m # says if significant
+np.gpp.t_m 
+# no significant
 
 
 ```
+
 No significant effect of the treatment en GPP
 
-3. Create a graph
+3.  Create a graph
 
 ```{r}
 
-png("GPP_treatment.png", width = 480, height=480)
+png("GPP_treatment.png", width = 600, height=400)
 
 data_GPP%>%
-  ggplot(aes(treatment, GPP.thu_mon.))+
-  geom_boxplot(color="black", fill="#00008B", alpha=0.8)+
+  ggplot(aes(treatment, GPP.thu_mon., fill=treatment))+
+  geom_boxplot(color="black", alpha=0.8)+
   theme_classic()+
   xlab("Treatment")+
   ylab("GPP Monday-Thursday (change in %)")+ 
   theme(legend.position = "none",
-        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
-        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
-        axis.title.x = element_text(size = 16, margin = margin(t = 12)),
-        axis.title.y = element_text(size = 16, margin = margin(r = 12)))+
+        axis.text.x = element_text(size = 16),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 18, margin = margin(t = 12)),
+        axis.title.y = element_text(size = 18, margin = margin(r = 12)))+
           scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + Nitrate", "Phosphate", "Nitrate", "Control"))
 
 dev.off()
 ```
-
 
 ## NPP and R to treatment
 
@@ -536,7 +535,7 @@ np.r.t_m
 
 No significant results of any of the 2.
 
-2. Graph
+2.  Graph
 
 ```{r}
 
@@ -544,8 +543,8 @@ No significant results of any of the 2.
 
 
 npp.P <- data_GPP%>%
-  ggplot(aes(treatment, NPP.thu_mon.))+
-  geom_boxplot(color="black", fill="blue", alpha=0.8)+
+  ggplot(aes(treatment, NPP.thu_mon., fill=treatment))+
+  geom_boxplot(color="black",alpha=1)+
   theme_classic()+
   xlab("Treatment")+
   ylab("NPP Monday-Thursday (change in %)")+ 
@@ -554,14 +553,14 @@ npp.P <- data_GPP%>%
         axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
         axis.title.x = element_text(size = 16, margin = margin(t = 12)),
         axis.title.y = element_text(size = 16, margin = margin(r = 12)))+
-          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + Nitrate", "Phosphate", "Nitrate", "Control"))
+          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + \n Nitrate", "Phosphate", "Nitrate", "Control"))
 
 
 #R
 
 r.P <- data_GPP%>%
-  ggplot(aes(treatment, R.thu_mon.))+
-  geom_boxplot(color="black", fill="grey", alpha=0.8)+
+  ggplot(aes(treatment, R.thu_mon., fill=treatment))+
+  geom_boxplot(color="black", alpha=0.4)+
   theme_classic()+
   xlab("Treatment")+
   ylab("R Monday-Thursday (change in %)")+ 
@@ -570,16 +569,18 @@ r.P <- data_GPP%>%
         axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
         axis.title.x = element_text(size = 16, margin = margin(t = 12)),
         axis.title.y = element_text(size = 16, margin = margin(r = 12)))+
-          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + Nitrate", "Phosphate", "Nitrate", "Control"))
+          scale_x_discrete(breaks = c("pn", "px", "xn", "xx"), labels = c("Posphate + \n Nitrate", "Phosphate", "Nitrate", "Control"))
 
-
+png("NPP_R_treatment.png", width = 900, height=400)
 # Arrange the two plots side by side
 combined_plot <- grid.arrange(npp.P, r.P, ncol = 2)
+
+dev.off()
 ```
 
 # Effect of site in GPP
 
-1. Linear model
+1.  Linear model
 
 ```{r}
 mod1<-lm(GPP.thu_mon.~site, data=data_GPP)
@@ -591,7 +592,7 @@ plot(mod1)
 #doesn't meet assumptions
 ```
 
-2. Non-parametric alternative
+2.  Non-parametric alternative
 
 ```{r}
 mod1_np<-kruskal.test(GPP.thu_mon.~site, data=data_GPP)
@@ -599,6 +600,7 @@ mod1_np
 
 #significant
 ```
+
 Site has a significant effect on GPP. See which one is creating the difference:
 
 ```{r}
@@ -607,11 +609,12 @@ dunn.test(data_GPP$GPP.thu_mon., g = data_GPP$site)
 
 Site 4 significantly different than the rest of them.
 
-3. Create a graph
+3.  Create a graph
 
 ```{r}
 data_GPP$site<-as.factor(data_GPP$site)
 
+png("GPP_site.png", width = 600, height=350)
 plot<-data_GPP%>%
   ggplot(aes(site, GPP.thu_mon., fill=site))+
   geom_boxplot(color="black", alpha=0.8)+
@@ -620,19 +623,21 @@ plot<-data_GPP%>%
   xlab("Site")+
   ylab("GPP Monday-Thursday (change in %)")+ 
   theme(legend.position = "none",
-        axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
-        axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
-        axis.title.x = element_text(size = 16, margin = margin(t = 10)),
+        axis.text.x = element_text(size = 16),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 18, margin = margin(t = 10)),
         axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
   # Add stars to the boxplot
   geom_text( aes(x = 4, y = -13, label ="*"),
             vjust = 0.5, hjust = 0.5, color = "yellow", size = 10, fontface = "bold")
 print(plot)
+
+dev.off()
 ```
 
 ## Temperature effect on GPP
 
-1. Load a new data set
+1.  Load a new data set
 
 ```{r}
 
@@ -648,7 +653,7 @@ full2<-full2%>%
 
 ```
 
-2. Create linear model
+2.  Create linear model
 
 ```{r}
 mod_t<-lm(GPP.thu_mon.~av.temp, data=full2)
@@ -665,8 +670,7 @@ plot(mod_t2)
 #still doesn't meet
 ```
 
-
-3. Non-parametric test
+3.  Non-parametric test
 
 ```{r}
 
