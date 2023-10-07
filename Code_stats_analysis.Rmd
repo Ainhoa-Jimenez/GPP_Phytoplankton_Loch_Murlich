@@ -63,7 +63,7 @@ Try logging the data
 
 Looks much better.
 
-3.  Conduct a linear model on Monday data
+3.  Conduct a linear model without Monday data
 
 ```{r}
 #first need to remove NA
@@ -133,7 +133,7 @@ labels_p1<-str_wrap(c("Phosphate + Nitrate + Light", "Phosphate + Nitrate + Dark
 
 
 # Set the PNG device for plotting
-png("Plankton_treatment_barchart.png", width=480, height=480)
+png("Plankton_treatment_barchart.png", width=600, height=400)
 
 # Create the ggplot
 p1<- ggplot(summary_plankton, aes(x=treatment, y=mean, fill=as.factor(id))) + 
@@ -148,7 +148,7 @@ p1<- ggplot(summary_plankton, aes(x=treatment, y=mean, fill=as.factor(id))) +
 p1<-p1+ theme_classic()+
   xlab("Treatment")+
   ylab("Mean plankton abundance per microliter")+
-  scale_x_discrete(labels= c("Phosphate \n + \n Nitrate", "Phosphate \n + \n Nitrate", "Phosphate", "Phosphate","Nitrate", "Nitrate", "No Spike", "No Spike")) +
+  scale_x_discrete(labels= c("Phosphate \n + Nitrate", "Phosphate \n + Nitrate", "Phosphate", "Phosphate","Nitrate", "Nitrate", "No Spike", "No Spike")) +
   theme(
         axis.text.x = element_text(size = 14, angle=50, hjust=1),  # Adjust the size of x-axis labels
         axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
@@ -156,7 +156,7 @@ p1<-p1+ theme_classic()+
         axis.title.y = element_text(size = 16, margin = margin(r = 10)))+
   labs(fill="Light Treatment")
 
-print(p1)
+p1
 
 #Close the PNG service
 dev.off()
@@ -224,7 +224,7 @@ Site has a significant effect on phytoplankton abundance.
 ```{r}
 plankton_total_clean$site<-as.factor(plankton_total_clean$site)
 
-png("Plankton_Site.png", width=480, height=480)
+png("Plankton_Site.png", width=600, height=400)
 
 plankton_total_clean%>%
   ggplot(aes(site, mean_per_ul, fill=site))+
@@ -307,22 +307,12 @@ posthoc
 
 Site 4 differs significantly with sites 3 and 1
 
-```{r}
-#include day as a factor
-temp_day_plankton_lm<- lm(log(temperature)~site+date, data=full)
-anova(temp_day_plankton_lm)
-plot(temp_day_plankton_lm)
-
-#doesn't meet normality
-#no non-parametric alternative
-```
-
 3.  Graph
 
 ```{r}
 #graph of temp by site
 
-png("temp_site.png", width=480, height=480)
+png("temp_site.png", width=600, height=400)
 
  full%>% 
    ggplot(aes(site, temperature))+
@@ -333,15 +323,15 @@ png("temp_site.png", width=480, height=480)
   ylab("Mean Temperature (ºC)")+
   scale_x_discrete(labels= c("\nS1", "\nS2", "\nS3", "\nS4"))+
   theme(legend.position = "none",
-        axis.text.x = element_text(size = 12, margin = margin(b=20)),  # Adjust the size of x-axis labels
-        axis.text.y = element_text(size = 12),  # Adjust the size of y-axis labels
-        axis.title.x = element_text(size = 14, margin = margin(t = 10)),
-        axis.title.y = element_text(size = 14, margin = margin(r = 10)))
+        axis.text.x = element_text(size = 16, margin = margin(b=20)),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 18, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 18, margin = margin(r = 10)))
 dev.off()
 
 #divided by day
 
-png("temp_site_day.png", width=480, height=480)
+png("temp_site_day.png", width=600, height=400)
 
 full%>% 
    ggplot(aes(site, temperature))+
@@ -352,10 +342,10 @@ full%>%
   ylab("Mean Temperature (ºC)")+
   scale_x_discrete(labels= c("\nS1", "\nS2", "\nS3", "\nS4"))+
   theme(legend.position = "none",
-        axis.text.x = element_text(size = 12, margin = margin(b=20)),  # Adjust the size of x-axis labels
-        axis.text.y = element_text(size = 12),  # Adjust the size of y-axis labels
-        axis.title.x = element_text(size = 14, margin = margin(t = 10)),
-        axis.title.y = element_text(size = 14, margin = margin(r = 10)))+
+        axis.text.x = element_text(size = 16, margin = margin(b=20)),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 18, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 18, margin = margin(r = 10)))+
   facet_wrap(~as.factor(date))
 
 dev.off()
@@ -417,7 +407,7 @@ meta <- read_xlsx("LAKE4.xlsx", sheet = "N and P Concentrations") |>
 
 ```{r}
 
-png("background_condition.png", width = 480, height=480)
+png("background_condition.png", width = 600, height=400)
 
 (meta_hist <- ggplot(meta |> filter(!measurment %in% "mean_temp"), aes(x = as.factor(Site), y = value, fill = as.factor(measurment)) ) +
   geom_bar(position = "dodge", stat="identity") +
@@ -427,10 +417,10 @@ png("background_condition.png", width = 480, height=480)
     ylab("mg/L")+
     xlab("Site")+
     theme(
-          axis.text.x = element_text(size = 14),  # Adjust the size of x-axis labels
-          axis.text.y = element_text(size = 14),  # Adjust the size of y-axis labels
-          axis.title.x = element_text(size = 16, margin = margin(t = 10)),
-          axis.title.y = element_text(size = 16, margin = margin(r = 10)), 
+          axis.text.x = element_text(size = 16),  # Adjust the size of x-axis labels
+          axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+          axis.title.x = element_text(size = 18, margin = margin(t = 10)),
+          axis.title.y = element_text(size = 18, margin = margin(r = 10)), 
           legend.text = element_text(size = 12), 
           legend.title = element_text(size = 14))
 )
@@ -634,6 +624,70 @@ print(plot)
 
 dev.off()
 ```
+
+
+## Effect of site in NPP and R
+
+1. Non-parametric test
+
+```{r}
+mod2_np<-kruskal.test(NPP.thu_mon.~site, data=data_GPP)
+mod2_np
+
+mod3_np<-kruskal.test(R.thu_mon.~site, data=data_GPP)
+mod3_np
+```
+2. Plot
+
+```{r}
+
+png("NPP_R_site.png", width = 900, height=350)
+
+
+plot_npp<-data_GPP%>%
+  ggplot(aes(site, NPP.thu_mon., fill=site))+
+  geom_boxplot(color="black", alpha=0.8)+
+  theme_classic()+
+  theme(panel.background = element_blank())+
+  xlab("Site")+
+  ylab("NPP Monday-Thursday (change in %)")+ 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 16),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 18, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 10)))
+  # Add stars to the boxplot
+  #geom_text( aes(x = 4, y = -13, label ="*"), vjust = 0.5, hjust = 0.5, color = "yellow", size = 10, fontface = "bold")
+
+plot_r<-data_GPP%>%
+  ggplot(aes(site, R.thu_mon., fill=site))+
+  geom_boxplot(color="black", alpha=0.8)+
+  theme_classic()+
+  theme(panel.background = element_blank())+
+  xlab("Site")+
+  ylab("R Monday-Thursday (change in %)")+ 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 16),  # Adjust the size of x-axis labels
+        axis.text.y = element_text(size = 16),  # Adjust the size of y-axis labels
+        axis.title.x = element_text(size = 18, margin = margin(t = 10)),
+        axis.title.y = element_text(size = 16, margin = margin(r = 10)))
+  # Add stars to the boxplot
+  #geom_text( aes(x = 4, y = -13, label ="*"), vjust = 0.5, hjust = 0.5, color = "yellow", size = 10, fontface = "bold")
+
+
+#combined plot
+plot<-grid.arrange(plot_npp, plot_r, ncol = 2)
+
+print(plot)
+
+dev.off()
+```
+
+
+
+
+
+
 
 ## Temperature effect on GPP
 
